@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budget URSSAF</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>Budget URSSAF</h1>
+  <p class="subtitle">Suivi du chiffre d'affaires par mois et par client</p>
+
+  <button id="btn-gear" class="btn-gear" title="Réglages" aria-label="Ouvrir les réglages">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+      <path d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.14.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.14 7.14 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.49.38 1.04.7 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.59-.24 1.14-.56 1.63-.94l2.39.96c.24.1.5 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"/>
+    </svg>
+  </button>
+</header>
+
+<div id="settings-backdrop" class="settings-backdrop" hidden></div>
+
+<aside id="settings-panel" class="settings-panel" hidden>
+  <div class="settings-header">
+    <h2>Réglages</h2>
+    <button id="btn-close-settings" class="btn-close" aria-label="Fermer">&times;</button>
+  </div>
+
+  <div class="settings-section">
+    <h3>Taux URSSAF</h3>
+    <div class="form-row">
+      <label for="taux-defaut">Taux par défaut (%)</label>
+      <input type="number" id="taux-defaut" step="0.01" min="0" max="100" value="25.60">
+    </div>
+    <button id="btn-save-taux" class="btn btn-secondary">Enregistrer le taux</button>
+    <span id="taux-msg" class="msg"></span>
+  </div>
+
+  <div class="settings-section">
+    <h3>Sauvegarde des données</h3>
+    <div class="settings-actions">
+      <button id="btn-export-json" class="btn btn-secondary">⬇ Exporter en JSON</button>
+      <button id="btn-import-json" class="btn btn-secondary">⬆ Importer un JSON</button>
+      <input type="file" id="input-import-json" accept="application/json" hidden>
+    </div>
+    <span id="import-msg" class="msg"></span>
+  </div>
+
+  <div class="settings-section">
+    <h3>Export PDF</h3>
+    <div class="form-row">
+      <label for="pdf-annee">Année</label>
+      <select id="pdf-annee"></select>
+    </div>
+    <button id="btn-export-pdf" class="btn btn-secondary">🖨 Exporter en PDF</button>
+  </div>
+</aside>
+
+<main>
+
+  <section class="card">
+    <h2 id="form-title">Ajouter une recette</h2>
+    <form id="entry-form">
+      <input type="hidden" id="entry-id">
+
+      <div class="form-row">
+        <label for="mois">Mois</label>
+        <input type="month" id="mois" required>
+      </div>
+
+      <div class="form-row">
+        <label for="client">Client</label>
+        <input type="text" id="client" list="clients-list" placeholder="Nom du client" required>
+        <datalist id="clients-list"></datalist>
+      </div>
+
+      <div class="form-row">
+        <label for="ca">Chiffre d'affaires (€)</label>
+        <input type="number" id="ca" step="0.01" min="0" placeholder="0.00" required>
+      </div>
+
+      <div class="form-row">
+        <label for="taux">Taux URSSAF (%)</label>
+        <input type="number" id="taux" step="0.01" min="0" max="100" readonly tabindex="-1" required>
+        <span class="hint">Modifiable uniquement dans les réglages ⚙</span>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="btn-submit">Ajouter</button>
+        <button type="button" class="btn btn-secondary" id="btn-cancel" hidden>Annuler</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Filtres</h2>
+    <div class="form-row">
+      <label for="filtre-mois">Mois</label>
+      <select id="filtre-mois">
+        <option value="">Tous les mois</option>
+      </select>
+
+      <label for="filtre-client">Client</label>
+      <input type="text" id="filtre-client" placeholder="Rechercher un client...">
+    </div>
+  </section>
+
+  <section class="summary">
+    <div class="summary-box">
+      <span class="summary-label">Chiffre d'affaires</span>
+      <span class="summary-value" id="total-ca">0,00 €</span>
+    </div>
+    <div class="summary-box summary-urssaf">
+      <span class="summary-label">Part URSSAF</span>
+      <span class="summary-value" id="total-urssaf">0,00 €</span>
+    </div>
+    <div class="summary-box summary-net">
+      <span class="summary-label">Reste net</span>
+      <span class="summary-value" id="total-net">0,00 €</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Recettes détaillées</h2>
+    <div class="table-wrapper">
+      <table id="entries-table">
+        <thead>
+          <tr>
+            <th>Mois</th>
+            <th>Client</th>
+            <th>CA (€)</th>
+            <th>Taux</th>
+            <th>URSSAF (€)</th>
+            <th>Net (€)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="entries-body">
+        </tbody>
+      </table>
+      <p id="empty-msg" class="empty-msg" hidden>Aucune recette enregistrée pour le moment.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Récapitulatif par mois</h2>
+    <div class="table-wrapper">
+      <table id="months-table">
+        <thead>
+          <tr>
+            <th>Mois</th>
+            <th>CA total (€)</th>
+            <th>URSSAF total (€)</th>
+            <th>Net total (€)</th>
+          </tr>
+        </thead>
+        <tbody id="months-body">
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>Données stockées localement dans votre navigateur (IndexedDB).</p>
+  <p>Imaginé et développé par <a href="https://mathias-monistrol.com/" target="_blank" rel="noopener noreferrer">Mathias Monistrol</a></p>
+</footer>
+
+<div id="printable-report" class="printable-report"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
