@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Memory-Taxes</title>
+<title>Budget URSSAF</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -93,18 +93,6 @@
     </form>
   </section>
 
-  <section class="card">
-    <h2>Filtres</h2>
-    <div class="form-row">
-      <label for="filtre-mois">Mois</label>
-      <select id="filtre-mois">
-        <option value="">Tous les mois</option>
-      </select>
-
-      <label for="filtre-client">Client</label>
-      <input type="text" id="filtre-client" placeholder="Rechercher un client...">
-    </div>
-  </section>
 
   <section class="summary">
     <div class="summary-box">
@@ -122,17 +110,31 @@
   </section>
 
   <section class="card">
+    <h2>Filtres</h2>
+    <div class="form-row">
+      <label for="filtre-mois">Mois</label>
+      <select id="filtre-mois">
+        <option value="">Tous les mois</option>
+      </select>
+
+      <label for="filtre-client">Client</label>
+      <input type="text" id="filtre-client" placeholder="Rechercher un client...">
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Recettes détaillées</h2>
     <div class="table-wrapper">
       <table id="entries-table">
         <thead>
           <tr>
-            <th>Mois</th>
-            <th>Client</th>
-            <th>CA (€)</th>
-            <th>Taux</th>
-            <th>URSSAF (€)</th>
-            <th>Net (€)</th>
+            <th data-sort="mois">Mois<span class="sort-indicator"></span></th>
+            <th data-sort="client">Client<span class="sort-indicator"></span></th>
+            <th data-sort="ca">CA (€)<span class="sort-indicator"></span></th>
+            <th data-sort="taux">Taux<span class="sort-indicator"></span></th>
+            <th data-sort="urssaf">URSSAF (€)<span class="sort-indicator"></span></th>
+            <th data-sort="net">Net (€)<span class="sort-indicator"></span></th>
+            <th data-sort="paye">Paiement<span class="sort-indicator"></span></th>
             <th>Actions</th>
           </tr>
         </thead>

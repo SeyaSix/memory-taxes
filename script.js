@@ -132,6 +132,7 @@ const totalUrssafEl = document.getElementById('total-urssaf');
 const totalNetEl = document.getElementById('total-net');
 
 let toutesLesEntrees = [];
+let triActuel = { colonne: 'mois', direction: 'desc' };
 
 function calculerUrssaf(ca, taux) {
   return (ca * taux) / 100;
@@ -174,10 +175,60 @@ function obtenirEntreesFiltrees() {
   });
 }
 
+function obtenirValeurTri(entry, colonne) {
+  switch (colonne) {
+    case 'mois':
+      return entry.mois;
+    case 'client':
+      return entry.client.toLowerCase();
+    case 'ca':
+      return entry.ca;
+    case 'taux':
+      return entry.taux;
+    case 'urssaf':
+      return calculerUrssaf(entry.ca, entry.taux);
+    case 'net':
+      return entry.ca - calculerUrssaf(entry.ca, entry.taux);
+    case 'paye':
+      return entry.paye ? 1 : 0;
+    default:
+      return 0;
+  }
+}
+
+function comparerEntries(a, b) {
+  const { colonne, direction } = triActuel;
+  const va = obtenirValeurTri(a, colonne);
+  const vb = obtenirValeurTri(b, colonne);
+
+  let comparaison;
+  if (typeof va === 'number' && typeof vb === 'number') {
+    comparaison = va - vb;
+  } else {
+    comparaison = String(va).localeCompare(String(vb), 'fr');
+  }
+
+  return direction === 'desc' ? -comparaison : comparaison;
+}
+
+function mettreAJourEnTetesTri() {
+  document.querySelectorAll('#entries-table thead th[data-sort]').forEach((th) => {
+    const indicateur = th.querySelector('.sort-indicator');
+    const estActif = th.dataset.sort === triActuel.colonne;
+
+    th.classList.toggle('is-sorted', estActif);
+    if (indicateur) {
+      indicateur.textContent = estActif ? (triActuel.direction === 'desc' ? '▼' : '▲') : '';
+    }
+  });
+}
+
 function afficherTableauEntrees() {
+  mettreAJourEnTetesTri();
+
   const entries = obtenirEntreesFiltrees()
     .slice()
-    .sort((a, b) => (a.mois < b.mois ? 1 : a.mois > b.mois ? -1 : a.client.localeCompare(b.client)));
+    .sort(comparerEntries);
 
   entriesBody.innerHTML = '';
   emptyMsg.hidden = entries.length > 0;
@@ -200,8 +251,28 @@ function afficherTableauEntrees() {
       <td>${formatEuro(urssaf)}</td>
       <td>${formatEuro(net)}</td>
       <td>
-        <button class="btn-edit" data-id="${entry.id}">Modifier</button>
-        <button class="btn-danger" data-id="${entry.id}">Supprimer</button>
+        <button class="btn-paye ${entry.paye ? 'is-paye' : ''}" data-id="${entry.id}" data-action="toggle-paye">
+          ${entry.paye ? '✔ Payé par le client' : 'Payé par le client'}
+        </button>
+      </td>
+      <td class="actions-cell">
+        <button class="btn-icon btn-icon-edit" data-id="${entry.id}" data-action="edit" title="Modifier" aria-label="Modifier">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="3" width="11" height="16" rx="1.5"></rect>
+            <line x1="7" y1="7" x2="12" y2="7"></line>
+            <line x1="7" y1="10.5" x2="12" y2="10.5"></line>
+            <path d="M13.5 16.5 19 11l2.5 2.5L16 19h-2.5v-2.5z" fill="currentColor" stroke="none"></path>
+          </svg>
+        </button>
+        <button class="btn-icon btn-icon-delete" data-id="${entry.id}" data-action="delete" title="Supprimer" aria-label="Supprimer">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 7 20 7"></polyline>
+            <path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"></path>
+            <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+        </button>
       </td>
     `;
     entriesBody.appendChild(tr);
@@ -307,8 +378,11 @@ form.addEventListener('submit', async (event) => {
 
   if (inputId.value) {
     entry.id = Number(inputId.value);
+    const existante = toutesLesEntrees.find((e) => e.id === entry.id);
+    entry.paye = existante ? !!existante.paye : false;
     await updateEntry(entry);
   } else {
+    entry.paye = false;
     await addEntry(entry);
   }
 
@@ -321,18 +395,23 @@ btnCancel.addEventListener('click', () => {
 });
 
 entriesBody.addEventListener('click', async (event) => {
-  const target = event.target;
+  const target = event.target.closest('button');
+  if (!target) return;
+
   const id = Number(target.dataset.id);
   if (!id) return;
 
-  if (target.classList.contains('btn-danger')) {
+  const action = target.dataset.action;
+
+  if (action === 'delete') {
     if (confirm('Supprimer cette recette ?')) {
       await deleteEntry(id);
       await rafraichirAffichage();
     }
+    return;
   }
 
-  if (target.classList.contains('btn-edit')) {
+  if (action === 'edit') {
     const entry = toutesLesEntrees.find((e) => e.id === id);
     if (!entry) return;
 
@@ -347,11 +426,37 @@ entriesBody.addEventListener('click', async (event) => {
     btnCancel.hidden = false;
 
     window.scrollTo({ top: form.offsetTop - 20, behavior: 'smooth' });
+    return;
+  }
+
+  if (action === 'toggle-paye') {
+    const entry = toutesLesEntrees.find((e) => e.id === id);
+    if (!entry) return;
+
+    entry.paye = !entry.paye;
+    await updateEntry(entry);
+    await rafraichirAffichage();
   }
 });
 
 filtreMois.addEventListener('change', afficherTableauEntrees);
 filtreClient.addEventListener('input', afficherTableauEntrees);
+
+document.querySelector('#entries-table thead').addEventListener('click', (event) => {
+  const th = event.target.closest('th[data-sort]');
+  if (!th) return;
+
+  const colonne = th.dataset.sort;
+
+  if (triActuel.colonne === colonne) {
+    triActuel.direction = triActuel.direction === 'desc' ? 'asc' : 'desc';
+  } else {
+    triActuel.colonne = colonne;
+    triActuel.direction = 'desc';
+  }
+
+  afficherTableauEntrees();
+});
 
 btnSaveTaux.addEventListener('click', async () => {
   const valeur = parseFloat(inputTauxDefaut.value);
@@ -474,6 +579,7 @@ btnExportPdf.addEventListener('click', () => {
         <td>${entry.taux.toFixed(2)} %</td>
         <td>${formatEuro(urssaf)}</td>
         <td>${formatEuro(net)}</td>
+        <td>${entry.paye ? 'Payé' : 'Non payé'}</td>
       </tr>
     `;
   }).join('');
@@ -490,10 +596,11 @@ btnExportPdf.addEventListener('click', () => {
           <th>Taux</th>
           <th>URSSAF (€)</th>
           <th>Net (€)</th>
+          <th>Paiement</th>
         </tr>
       </thead>
       <tbody>
-        ${lignes || '<tr><td colspan="6">Aucune recette pour cette année.</td></tr>'}
+        ${lignes || '<tr><td colspan="7">Aucune recette pour cette année.</td></tr>'}
       </tbody>
       <tfoot>
         <tr>
@@ -502,6 +609,7 @@ btnExportPdf.addEventListener('click', () => {
           <td></td>
           <td>${formatEuro(totalUrssaf)}</td>
           <td>${formatEuro(totalCa - totalUrssaf)}</td>
+          <td></td>
         </tr>
       </tfoot>
     </table>
